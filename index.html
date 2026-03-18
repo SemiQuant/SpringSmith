@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coil Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg:        #0d0f0e;
+    --panel:     #141614;
+    --border:    #2a2e2a;
+    --accent:    #7fff5f;
+    --accent2:   #3a8a20;
+    --dim:       #4a5a48;
+    --text:      #c8d8c4;
+    --textdim:   #6a7a68;
+    --error:     #ff5f5f;
+    --mono:      'Share Tech Mono', monospace;
+    --sans:      'Barlow Condensed', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 48px 1fr;
+    grid-template-columns: 320px 1fr;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+  }
+  header .logo {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  header .logo span { color: var(--dim); }
+  header .tagline {
+    color: var(--textdim);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  header .status {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--textdim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: background 0.3s;
+  }
+  .dot.ready { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot.busy  { background: #ffcc44; box-shadow: 0 0 6px #ffcc44; animation: pulse 0.8s infinite; }
+  .dot.error { background: var(--error); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* SIDEBAR */
+  aside {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .section {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+  .section-title {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--textdim);
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  input[type="number"], input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus, input[type="text"]:focus {
+    border-color: var(--accent2);
+  }
+  input.invalid { border-color: var(--error) !important; }
+
+  .input-unit {
+    position: relative;
+  }
+  .input-unit input { padding-right: 28px; }
+  .input-unit .unit {
+    position: absolute;
+    right: 8px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--dim);
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .toggle-row label { color: var(--textdim); font-size: 11px; }
+
+  /* toggle switch */
+  .switch { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    left: 3px; top: 3px;
+    background: var(--dim);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .switch input:checked + .slider { background: var(--accent2); }
+  .switch input:checked + .slider::before {
+    transform: translateX(14px);
+    background: var(--accent);
+  }
+
+  /* BUTTONS */
+  .btn {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: var(--accent2);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--textdim);
+  }
+  .btn-ghost:hover { border-color: var(--dim); color: var(--text); }
+  .btn-ghost:disabled { opacity: 0.3; cursor: default; }
+
+  .btn-group { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; }
+
+  /* LOG */
+  .log-area {
+    flex: 1;
+    padding: 10px 16px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--textdim);
+    min-height: 80px;
+  }
+  .log-area .log-line { display: block; }
+  .log-area .log-ok   { color: var(--accent); }
+  .log-area .log-err  { color: var(--error); }
+  .log-area .log-dim  { color: var(--dim); }
+
+  /* VIEWPORT */
+  main {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  #canvas { display: block; width: 100%; height: 100%; }
+
+  /* overlay hints */
+  .overlay-hint {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    font-size: 10px;
+    color: var(--dim);
+    text-align: right;
+    line-height: 1.8;
+    pointer-events: none;
+  }
+  .overlay-stats {
+    position: absolute;
+    top: 12px; right: 14px;
+    font-size: 11px;
+    color: var(--dim);
+    text-align: right;
+    line-height: 1.7;
+    pointer-events: none;
+  }
+  .overlay-stats span { color: var(--textdim); }
+
+  /* progress bar */
+  #progress-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #progress-bar.active { opacity: 1; }
+  #progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* view tabs */
+  .view-tabs {
+    position: absolute;
+    top: 12px; left: 14px;
+    display: flex;
+    gap: 4px;
+  }
+  .view-tab {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--textdim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .view-tab:hover { color: var(--text); border-color: var(--dim); }
+  .view-tab.active { background: var(--accent2); border-color: var(--accent); color: var(--bg); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Coil<span>/</span>Gen</div>
+  <div class="tagline">parametric coil &amp; jig STL generator</div>
+  <div class="status">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">loading…</span>
+  </div>
+</header>
+
+<aside>
+  <div class="section">
+    <div class="section-title">Wire</div>
+    <div class="field">
+      <label>Diameter</label>
+      <div class="input-unit">
+        <input type="number" id="wire" value="1.3" min="0.1" max="10" step="0.1">
+        <span class="unit">mm</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Coil Shape</div>
+    <div class="toggle-row">
+      <label class="switch">
+        <input type="checkbox" id="oval-toggle">
+        <span class="slider"></span>
+      </label>
+      <label for="oval-toggle">Oval cross-section</label>
+    </div>
+
+    <div class="field">
+      <label>Bottom diameter <span id="lbl-bot-depth" style="display:none">— width × depth</span></label>
+      <div class="field-row">
+        <div class="input-unit">
+          <input type="number" id="bot-w" value="10" min="1" step="0.5">
+          <span class="unit">mm</span>
+        </div>
+        <div class="input-unit" id="bot-depth-wrap" style="display:none">
+          <input type="number" id="bot-d" value="18" min="1" step="0.5">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Top diameter <span id="lbl-top-depth" style="display:none">— width × depth</span></label>
+      <div class="field-row">
+        <div class="input-unit">
+          <input type="number" id="top-w" value="13" min="1" step="0.5">
+          <span class="unit">mm</span>
+        </div>
+        <div class="input-unit" id="top-depth-wrap" style="display:none">
+          <input type="number" id="top-d" value="22" min="1" step="0.5">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Height</label>
+      <div class="input-unit">
+        <input type="number" id="height" value="22" min="1" step="1">
+        <span class="unit">mm</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Turns <span style="color:var(--dim)">(blank = auto)</span></label>
+      <input type="number" id="turns" placeholder="auto" min="1" step="0.5">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Resolution</div>
+    <div class="field">
+      <label>Path points / turn</label>
+      <input type="number" id="path-res" value="60" min="20" max="200" step="10">
+    </div>
+    <div class="field">
+      <label>Wire sides</label>
+      <input type="number" id="tube-seg" value="12" min="6" max="32" step="2">
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="btn-generate" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
+      Generate
+    </button>
+    <button class="btn btn-ghost" id="btn-dl-coil" disabled>↓ Download Coil STL</button>
+    <button class="btn btn-ghost" id="btn-dl-jig"  disabled>↓ Download Jig STL</button>
+  </div>
+
+  <div class="log-area" id="log"></div>
+</aside>
+
+<main>
+  <canvas id="canvas"></canvas>
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="coil">Coil</button>
+    <button class="view-tab" data-view="jig">Jig</button>
+    <button class="view-tab" data-view="both">Both</button>
+  </div>
+  <div class="overlay-stats" id="stats"></div>
+  <div class="overlay-hint">drag · scroll · right-drag pan</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+</main>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import ManifoldModule from 'https://cdn.jsdelivr.net/npm/manifold-3d@3.0.0/manifold.js';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let wasm = null;
+let coilGeom = null, jigGeom = null;
+let coilStlBytes = null, jigStlBytes = null;
+let currentView = 'coil';
+let coilMesh3 = null, jigMesh3 = null;
+
+// ─── Three.js setup ───────────────────────────────────────────────────────────
+const canvas  = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setClearColor(0x0d0f0e);
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+camera.position.set(60, 40, 80);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.mouseButtons = {
+  LEFT: THREE.MOUSE.ROTATE,
+  MIDDLE: THREE.MOUSE.DOLLY,
+  RIGHT: THREE.MOUSE.PAN
+};
+
+// Lights
+const ambient = new THREE.AmbientLight(0x334433, 1.2);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+sun.position.set(60, 120, 80);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x4488ff, 0.6);
+fill.position.set(-60, -20, -60);
+scene.add(fill);
+
+// Grid
+const grid = new THREE.GridHelper(200, 40, 0x1a2a1a, 0x1a2a1a);
+scene.add(grid);
+
+// Materials
+const coilMat = new THREE.MeshStandardMaterial({
+  color: 0x7fff5f, metalness: 0.7, roughness: 0.3, envMapIntensity: 0.5
+});
+const jigMat = new THREE.MeshStandardMaterial({
+  color: 0x558844, metalness: 0.4, roughness: 0.6
+});
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  document.getElementById('status-dot').className = 'dot ' + state;
+  document.getElementById('status-text').textContent = text;
+}
+function log(msg, cls = '') {
+  const el = document.getElementById('log');
+  const line = document.createElement('span');
+  line.className = 'log-line' + (cls ? ' log-' + cls : '');
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function logClear() { document.getElementById('log').innerHTML = ''; }
+function progress(pct) {
+  const bar = document.getElementById('progress-bar');
+  const fill = document.getElementById('progress-fill');
+  if (pct >= 100) {
+    fill.style.width = '100%';
+    setTimeout(() => { bar.classList.remove('active'); fill.style.width = '0%'; }, 400);
+  } else {
+    bar.classList.add('active');
+    fill.style.width = pct + '%';
+  }
+}
+
+// ─── Oval toggle ──────────────────────────────────────────────────────────────
+document.getElementById('oval-toggle').addEventListener('change', e => {
+  const on = e.target.checked;
+  ['bot-depth-wrap','top-depth-wrap'].forEach(id =>
+    document.getElementById(id).style.display = on ? 'block' : 'none');
+  ['lbl-bot-depth','lbl-top-depth'].forEach(id =>
+    document.getElementById(id).style.display = on ? 'inline' : 'none');
+});
+
+// ─── View tabs ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.view-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    updateVisibility();
+  });
+});
+function updateVisibility() {
+  if (coilMesh3) coilMesh3.visible = currentView === 'coil' || currentView === 'both';
+  if (jigMesh3)  jigMesh3.visible  = currentView === 'jig'  || currentView === 'both';
+  if (jigMesh3 && currentView === 'both') {
+    jigMesh3.position.x = coilMesh3 ? -20 : 0;
+    coilMesh3 && (coilMesh3.position.x = 20);
+  } else {
+    if (coilMesh3) coilMesh3.position.x = 0;
+    if (jigMesh3)  jigMesh3.position.x  = 0;
+  }
+}
+
+// ─── Geometry helpers ─────────────────────────────────────────────────────────
+
+function linspace(a, b, n) {
+  const arr = new Float64Array(n);
+  for (let i = 0; i < n; i++) arr[i] = a + (b - a) * i / (n - 1);
+  return arr;
+}
+
+function buildFrenetFrames(pts) {
+  const n = pts.length;
+  const tangents  = new Array(n);
+  const normals   = new Array(n);
+  const binormals = new Array(n);
+
+  for (let i = 0; i < n - 1; i++) {
+    const dx = pts[i+1][0]-pts[i][0], dy = pts[i+1][1]-pts[i][1], dz = pts[i+1][2]-pts[i][2];
+    const len = Math.sqrt(dx*dx+dy*dy+dz*dz) || 1;
+    tangents[i] = [dx/len, dy/len, dz/len];
+  }
+  tangents[n-1] = tangents[n-2];
+
+  for (let i = 0; i < n; i++) {
+    const [tx,ty,tz] = tangents[i];
+    // cross(tangent, ref=[0,0,1])
+    let nx = ty*1 - tz*0, ny = tz*0 - tx*1, nz = tx*0 - ty*0;
+    // = [ty, -tx, 0]
+    nx = ty; ny = -tx; nz = 0;
+    let nl = Math.sqrt(nx*nx+ny*ny+nz*nz);
+    if (nl < 1e-6) { nx = tz*0-ty*0; ny = tx*0-tz*1; nz = ty*1-tx*0; /* cross(t,[1,0,0]) = [0,tz,-ty] */ nx=0; ny=tz; nz=-ty; nl=Math.sqrt(ny*ny+nz*nz)||1; }
+    else nl = nl;
+    normals[i] = [nx/nl, ny/nl, nz/nl];
+    const [bx,by,bz] = cross(tangents[i], normals[i]);
+    binormals[i] = [bx,by,bz];
+  }
+  return { tangents, normals, binormals };
+}
+
+function cross([ax,ay,az],[bx,by,bz]) {
+  return [ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx];
+}
+
+// Build tube geometry: returns {positions, indices}
+function buildTube(pathPts, radius, tubeSeg) {
+  const n = pathPts.length;
+  const { normals, binormals } = buildFrenetFrames(pathPts);
+  const S = tubeSeg;
+  const ringVerts = [];
+
+  for (let i = 0; i < n; i++) {
+    const [px,py,pz] = pathPts[i];
+    const [nx,ny,nz] = normals[i];
+    const [bx,by,bz] = binormals[i];
+    for (let j = 0; j < S; j++) {
+      const a = j / S * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      ringVerts.push(
+        px + radius*(ca*nx + sa*bx),
+        py + radius*(ca*ny + sa*by),
+        pz + radius*(ca*nz + sa*bz)
+      );
+    }
+  }
+
+  // cap centres
+  const botIdx = ringVerts.length / 3;
+  ringVerts.push(...pathPts[0]);
+  const topIdx = botIdx + 1;
+  ringVerts.push(...pathPts[n-1]);
+
+  const indices = [];
+  for (let i = 0; i < n-1; i++) {
+    for (let j = 0; j < S; j++) {
+      const j2 = (j+1) % S;
+      const a0=i*S+j, a1=i*S+j2, b0=(i+1)*S+j, b1=(i+1)*S+j2;
+      indices.push(a0,a1,b1, a0,b1,b0);
+    }
+  }
+  // bottom cap
+  for (let j = 0; j < S; j++) {
+    indices.push(j, botIdx, (j+1)%S);   // bottom cap — correct winding
+  }
+  // top cap
+  const base = (n-1)*S;
+  for (let j = 0; j < S; j++) {
+    indices.push(base+j, base+(j+1)%S, topIdx);  // top cap — correct winding
+  }
+
+  return { positions: new Float32Array(ringVerts), indices: new Uint32Array(indices) };
+}
+
+// Build elliptic frustum: {positions, indices}
+function buildFrustum(botRW, botRD, topRW, topRD, zBot, zTop, seg) {
+  const ang = seg;
+  const verts = [];
+  const botRing = [], topRing = [];
+  for (let j = 0; j < ang; j++) {
+    const a = j / ang * Math.PI * 2;
+    botRing.push([botRW*Math.cos(a), botRD*Math.sin(a), zBot]);
+    topRing.push([topRW*Math.cos(a), topRD*Math.sin(a), zTop]);
+  }
+  for (const v of botRing) verts.push(...v);   // 0..ang-1
+  for (const v of topRing) verts.push(...v);   // ang..2ang-1
+  verts.push(0,0,zBot);  // botCentre = 2*ang
+  verts.push(0,0,zTop);  // topCentre = 2*ang+1
+
+  const bi = 2*ang, ti = 2*ang+1;
+  const indices = [];
+  for (let j = 0; j < ang; j++) {
+    const j2 = (j+1)%ang;
+    const b0=j, b1=j2, t0=j+ang, t1=j2+ang;
+    indices.push(b0,b1,t1, b0,t1,t0);   // side
+    indices.push(j, bi, j2);             // bottom cap — correct winding
+    indices.push(j+ang, j2+ang, ti);     // top cap — correct winding
+  }
+  return { positions: new Float32Array(verts), indices: new Uint32Array(indices) };
+}
+
+// ─── Manifold helpers ─────────────────────────────────────────────────────────
+
+function toManifold(positions, indices) {
+  const { Manifold, Mesh } = wasm;
+  const m = new Mesh({
+    numProp: 3,
+    triVerts: indices,
+    vertProperties: positions
+  });
+  return new Manifold(m);
+}
+
+function fromManifold(man) {
+  const m = man.getMesh();
+  return {
+    positions: m.vertProperties,
+    indices: m.triVerts
+  };
+}
+
+// ─── Build helix path ─────────────────────────────────────────────────────────
+function buildHelixPath(botW, botD, topW, topD, height, turns, pathRes) {
+  const steps = Math.round(turns * pathRes);
+  const pts = [];
+  // coil wire centre = inner_radius + wire_radius = (inner_dia + wire_dia)/2
+  // but caller passes the already-computed semi-axes
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const angle = t * turns * Math.PI * 2;
+    const rx = botW + (topW - botW) * t;
+    const ry = botD + (topD - botD) * t;
+    pts.push([rx * Math.cos(angle), ry * Math.sin(angle), t * height]);
+  }
+  return pts;
+}
+
+// ─── Core generators ─────────────────────────────────────────────────────────
+
+function generateCoilGeom(params) {
+  const { wireDia, botW, botD, topW, topD, height, turns, pathRes, tubeSeg } = params;
+  const wr = wireDia / 2;
+  // wire centre semi-axes
+  const rBW = (botW + wireDia) / 2, rBD = (botD + wireDia) / 2;
+  const rTW = (topW + wireDia) / 2, rTD = (topD + wireDia) / 2;
+  const path = buildHelixPath(rBW, rBD, rTW, rTD, height, turns, pathRes);
+  return buildTube(path, wr, tubeSeg);
+}
+
+function generateJigGeom(params) {
+  const { Manifold } = wasm;
+  const { wireDia, botW, botD, topW, topD, height, turns, pathRes, tubeSeg } = params;
+  const wr = wireDia / 2;
+  const seg = Math.max(tubeSeg * 2, 64);
+
+  // Mandrel outer surface = coil inner radius
+  // Swap top/bottom so the larger diameter is always at the handle end (z=0)
+  const jigBotW = Math.max(botW, topW), jigBotD = Math.max(botD, topD);
+  const jigTopW = Math.min(botW, topW), jigTopD = Math.min(botD, topD);
+
+  const mBW = jigBotW / 2, mBD = jigBotD / 2;
+  const mTW = jigTopW / 2, mTD = jigTopD / 2;
+
+  // Build mandrel
+  const frust = buildFrustum(mBW, mBD, mTW, mTD, 0, height, seg);
+  const mandrel = toManifold(frust.positions, frust.indices);
+
+  // Build handle (15mm dia, 40mm long)
+  const hr = 7.5;
+  const han = buildFrustum(hr, hr, hr, hr, -40, 0, seg);
+  const handle = toManifold(han.positions, han.indices);
+
+  // Union
+  let body = Manifold.union(mandrel, handle);
+
+  // Groove path: centre on mandrel surface = inner_radius/2
+  const gBW = jigBotW / 2, gBD = jigBotD / 2;
+  const gTW = jigTopW / 2, gTD = jigTopD / 2;
+  const path = buildHelixPath(gBW, gBD, gTW, gTD, height, turns, pathRes);
+  const groove = buildTube(path, wr, tubeSeg);
+  const grooveMan = toManifold(groove.positions, groove.indices);
+
+  // Subtract
+  const result = Manifold.difference(body, grooveMan);
+  return fromManifold(result);
+}
+
+// ─── Three.js mesh from geometry ─────────────────────────────────────────────
+
+function makeThreeMesh(geomData, mat) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(geomData.positions, 3));
+  g.setIndex(new THREE.BufferAttribute(geomData.indices, 1));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+// ─── STL export ──────────────────────────────────────────────────────────────
+
+function buildSTL(geomData) {
+  const { positions, indices } = geomData;
+  const nTris = indices.length / 3;
+  const buf = new ArrayBuffer(84 + nTris * 50);
+  const view = new DataView(buf);
+  // header (80 bytes)
+  const enc = new TextEncoder();
+  enc.encodeInto('CoilGen STL'.padEnd(80), new Uint8Array(buf, 0, 80));
+  view.setUint32(80, nTris, true);
+  let offset = 84;
+  for (let i = 0; i < nTris; i++) {
+    const i0 = indices[i*3]*3, i1 = indices[i*3+1]*3, i2 = indices[i*3+2]*3;
+    const ax=positions[i0], ay=positions[i0+1], az=positions[i0+2];
+    const bx=positions[i1], by=positions[i1+1], bz=positions[i1+2];
+    const cx=positions[i2], cy=positions[i2+1], cz=positions[i2+2];
+    // normal
+    const ux=bx-ax,uy=by-ay,uz=bz-az, vx=cx-ax,vy=cy-ay,vz=cz-az;
+    const nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+    const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    view.setFloat32(offset,    nx/nl, true); offset+=4;
+    view.setFloat32(offset,    ny/nl, true); offset+=4;
+    view.setFloat32(offset,    nz/nl, true); offset+=4;
+    view.setFloat32(offset, ax, true); offset+=4;
+    view.setFloat32(offset, ay, true); offset+=4;
+    view.setFloat32(offset, az, true); offset+=4;
+    view.setFloat32(offset, bx, true); offset+=4;
+    view.setFloat32(offset, by, true); offset+=4;
+    view.setFloat32(offset, bz, true); offset+=4;
+    view.setFloat32(offset, cx, true); offset+=4;
+    view.setFloat32(offset, cy, true); offset+=4;
+    view.setFloat32(offset, cz, true); offset+=4;
+    view.setUint16(offset, 0, true);   offset+=2;
+  }
+  return buf;
+}
+
+function downloadSTL(buf, filename) {
+  const blob = new Blob([buf], { type: 'application/octet-stream' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Main generate ────────────────────────────────────────────────────────────
+
+async function generate() {
+  const btnGen = document.getElementById('btn-generate');
+  btnGen.disabled = true;
+  logClear();
+  setStatus('busy', 'generating…');
+  progress(5);
+
+  // Read params
+  const isOval = document.getElementById('oval-toggle').checked;
+  const wireDia = parseFloat(document.getElementById('wire').value);
+  const botW    = parseFloat(document.getElementById('bot-w').value);
+  const botD    = isOval ? parseFloat(document.getElementById('bot-d').value) : botW;
+  const topW    = parseFloat(document.getElementById('top-w').value);
+  const topD    = isOval ? parseFloat(document.getElementById('top-d').value) : topW;
+  const height  = parseFloat(document.getElementById('height').value);
+  const pathRes = parseInt(document.getElementById('path-res').value);
+  const tubeSeg = parseInt(document.getElementById('tube-seg').value);
+  const turnsRaw = document.getElementById('turns').value.trim();
+  const turns = turnsRaw ? parseFloat(turnsRaw) : height / (wireDia * 1.05);
+
+  // Validate
+  if ([wireDia,botW,botD,topW,topD,height].some(v => isNaN(v) || v <= 0)) {
+    log('Error: invalid parameters', 'err');
+    setStatus('error', 'invalid input');
+    btnGen.disabled = false;
+    return;
+  }
+
+  const params = { wireDia, botW, botD, topW, topD, height, turns, pathRes, tubeSeg };
+
+  log(`wire Ø${wireDia}mm  bot ${botW}${isOval?'×'+botD:''}mm  top ${topW}${isOval?'×'+topD:''}mm`);
+  log(`height ${height}mm  turns ${turns.toFixed(2)}  res ${pathRes}  seg ${tubeSeg}`);
+
+  // yield to browser for paint
+  await new Promise(r => setTimeout(r, 16));
+
+  try {
+    // ── Coil ──
+    log('building coil…', 'dim');
+    progress(20);
+    coilGeom = generateCoilGeom(params);
+    const coilTris = coilGeom.indices.length / 3;
+    log(`coil: ${coilTris.toLocaleString()} triangles`, 'ok');
+    coilStlBytes = buildSTL(coilGeom);
+    progress(50);
+
+    // ── Jig ──
+    log('building jig (CSG)…', 'dim');
+    await new Promise(r => setTimeout(r, 16));
+    jigGeom = generateJigGeom(params);
+    const jigTris = jigGeom.indices.length / 3;
+    log(`jig: ${jigTris.toLocaleString()} triangles`, 'ok');
+    jigStlBytes = buildSTL(jigGeom);
+    progress(90);
+
+    // ── Three.js preview ──
+    if (coilMesh3) { scene.remove(coilMesh3); coilMesh3.geometry.dispose(); }
+    if (jigMesh3)  { scene.remove(jigMesh3);  jigMesh3.geometry.dispose(); }
+    coilMesh3 = makeThreeMesh(coilGeom, coilMat);
+    jigMesh3  = makeThreeMesh(jigGeom,  jigMat);
+    scene.add(coilMesh3);
+    scene.add(jigMesh3);
+    updateVisibility();
+
+    // Auto-fit camera
+    const box = new THREE.Box3().setFromObject(coilMesh3);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const center = box.getCenter(new THREE.Vector3());
+    controls.target.copy(center);
+    camera.position.copy(center).addScaledVector(new THREE.Vector3(1,0.7,1.4).normalize(), size * 1.8);
+    controls.update();
+
+    // Stats overlay
+    document.getElementById('stats').innerHTML =
+      `<span>coil</span> ${coilTris.toLocaleString()} tris<br>` +
+      `<span>jig</span>  ${jigTris.toLocaleString()} tris<br>` +
+      `<span>Ø bot</span> ${botW}${isOval?'×'+botD:''}mm<br>` +
+      `<span>Ø top</span> ${topW}${isOval?'×'+topD:''}mm`;
+
+    document.getElementById('btn-dl-coil').disabled = false;
+    document.getElementById('btn-dl-jig').disabled  = false;
+
+    const suffix = `w${wireDia}_b${botW}${isOval?'x'+botD:''}_t${topW}${isOval?'x'+topD:''}_h${height}`;
+    document.getElementById('btn-dl-coil').dataset.filename = `coil_${suffix}.stl`;
+    document.getElementById('btn-dl-jig').dataset.filename  = `coil_${suffix}_jig.stl`;
+
+    progress(100);
+    setStatus('ready', 'ready');
+    log('done ✓', 'ok');
+
+  } catch(e) {
+    log('Error: ' + e.message, 'err');
+    console.error(e);
+    setStatus('error', 'error');
+    progress(100);
+  }
+
+  btnGen.disabled = false;
+}
+
+// ─── Download buttons ────────────────────────────────────────────────────────
+document.getElementById('btn-dl-coil').addEventListener('click', () => {
+  if (coilStlBytes) downloadSTL(coilStlBytes,
+    document.getElementById('btn-dl-coil').dataset.filename || 'coil.stl');
+});
+document.getElementById('btn-dl-jig').addEventListener('click', () => {
+  if (jigStlBytes) downloadSTL(jigStlBytes,
+    document.getElementById('btn-dl-jig').dataset.filename || 'coil_jig.stl');
+});
+
+document.getElementById('btn-generate').addEventListener('click', generate);
+
+// ─── Init manifold ────────────────────────────────────────────────────────────
+(async () => {
+  setStatus('', 'loading manifold…');
+  try {
+    wasm = await ManifoldModule();
+    wasm.setup();
+    setStatus('ready', 'ready');
+    document.getElementById('btn-generate').disabled = false;
+    log('manifold-3d loaded', 'ok');
+    log('enter parameters and click Generate', 'dim');
+  } catch(e) {
+    setStatus('error', 'failed to load');
+    log('Failed to load manifold-3d: ' + e.message, 'err');
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
