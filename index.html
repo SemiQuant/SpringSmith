@@ -404,9 +404,9 @@
 <main>
   <canvas id="canvas"></canvas>
   <div class="view-tabs">
-    <button class="view-tab" data-view="coil">Coil</button>
+    <button class="view-tab active" data-view="coil">Coil</button>
     <button class="view-tab" data-view="jig">Jig</button>
-    <button class="view-tab active" data-view="both">Both</button>
+    <button class="view-tab" data-view="both">Both</button>
   </div>
   <div class="overlay-stats" id="stats"></div>
   <div class="overlay-hint">drag · scroll · right-drag pan</div>
@@ -431,7 +431,7 @@ import ManifoldModule from 'https://cdn.jsdelivr.net/npm/manifold-3d@3.0.0/manif
 let wasm = null;
 let coilGeom = null, jigGeom = null;
 let coilStlBytes = null, jigStlBytes = null;
-let currentView = 'coil';
+let currentView = 'both';
 let coilMesh3 = null, jigMesh3 = null;
 
 // ─── Three.js setup ───────────────────────────────────────────────────────────
